@@ -1,0 +1,26 @@
+# Virtual environment
+keda_env/
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+
+#other
+keda/tests.py
