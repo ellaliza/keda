@@ -6,8 +6,9 @@ Defined in `keda/exceptions.py`. All of them inherit from Python's built-in
 | Exception                     | Raised when                                                         |
 |-------------------------------|---------------------------------------------------------------------|
 | `InvalidFieldConstraintError` | A field is created with an invalid constraint, such as a `CharDataField` with `max_length` above 255. |
-| `InvalidFieldValueError`      | A value given to a field breaks its constraints, such as a string longer than `max_length`. |
+| `InvalidFieldValueError`      | A model instance is assigned an attribute that is not one of its fields. Intended for values that break a field's constraints too, such as a string longer than `max_length`, once validation is implemented. |
 | `NoPrimaryKeyError`           | A model has no primary key but declares a field named `id` that is not one. |
+| `InvalidFieldError`           | Defined for references to unknown fields. Nothing raises it yet. |
 
 ```python
 from exceptions import InvalidFieldConstraintError

@@ -1,6 +1,12 @@
 import sqlite3
 import time
 from colored import Text
+from sqlite3 import Cursor
+
+
+def dict_factory(cursor: Cursor, row: tuple):
+    fields = [column[0] for column in cursor.description]
+    return {key: value for key, value in zip(fields, row)}
 
 class Database():
     def __init__(self, path=":memory:", echo=True):
@@ -11,18 +17,19 @@ class Database():
 
     def _create_connection(self):
         self.connection = sqlite3.connect(self.path)
-        self.cursor = self.connection.cursor()
+        self.connection.row_factory = dict_factory
         
         print(f"{Text.GREEN}Connection created to {self.path}{Text.RESET}")
 
     def close(self):
         self.connection.close()
-        print(f"Connection closed.")
+        print(f"{Text.GREEN}Connection closed.{Text.RESET}")
 
     def execute(self, statement: str, params: tuple[str] = ()):
         start_time = time.time()
         try:
-            result = self.cursor.execute(statement + ";", params)
+            cursor = self.connection.cursor()
+            result = self.connection.execute(statement + ";", params)
         except Exception as e:
             raise e
         end_time = time.time()
@@ -31,7 +38,6 @@ class Database():
         print(f"{Text.cyan_text(output)}")
         return result
 
-   
 
         
 

@@ -6,3 +6,6 @@ class InvalidFieldValueError(Exception):
 
 class NoPrimaryKeyError(Exception):
     pass
+
+class InvalidFieldError(Exception):
+    pass
