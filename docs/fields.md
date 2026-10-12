@@ -99,11 +99,12 @@ These will be addressed with field value validation in the next update:
   is written as the text `"None"`, and `DateDataField` / `DatetimeDataField`
   currently always convert to `None` because `date(...)` and `datetime(...)`
   are called with a single value instead of being parsed.
-- The `py_representation(field_value_obj)` methods defined on the date and
-  datetime fields are not used by `DataModel`; it calls
-  `FieldValue.py_representation()`.
-- Values read back from SQLite are not converted: a `BOOLEAN` column comes back
-  as `1` / `0`, and dates as text.
+- Rows loaded by `select_objects()` are converted with `py_representation_type`
+  (for example `bool(1)` gives `True`). The same plain conversion applies:
+  `NULL` in an `INTEGER` or `REAL` column makes `int(None)` / `float(None)`
+  raise `TypeError`, `NULL` in a `TEXT` column becomes the string `"None"`, and
+  loading a date or datetime column raises `TypeError` because the stored text
+  is not parsed.
 
 ## Examples
 

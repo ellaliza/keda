@@ -27,6 +27,8 @@ All notable changes to Keda are recorded here. The format follows
 - `DataModel` subclasses are no longer turned into dataclasses.
 - `Database` no longer keeps a shared `cursor`; each `execute()` returns its
   own.
+- `select_objects()` converts each loaded column with the field's
+  `py_representation_type`.
 - Assigning a non-field attribute on a model instance raises
   `InvalidFieldValueError`.
 

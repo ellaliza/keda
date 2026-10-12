@@ -130,7 +130,10 @@ Deletes the row matching the instance's primary key and returns the cursor.
 
 Class method. Runs `SELECT * FROM <table_name>` and returns a list of model
 instances, one per row, already marked as saved so that `save_object()` updates
-them.
+them. Each column value is converted with the field's `py_representation_type`,
+so a `BOOLEAN` column comes back as `True` / `False` rather than `1` / `0`. See
+the [known limitations](fields.md#known-limitations) for what this does not
+handle yet (`NULL` values and dates).
 
 ```python
 people = Person.select_objects(db)

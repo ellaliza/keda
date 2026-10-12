@@ -133,11 +133,7 @@ class DateDataField(__DataField):
     def py_representation_type(self):
         return date
 
-    def py_representation(self, field_value_obj : FieldValue):
-        try:
-            return date(field_value_obj.value).isoformat()
-        except TypeError:
-            return str(None)
+
     
         
 
@@ -159,11 +155,7 @@ class DatetimeDataField(__DataField):
     def py_representation_type(self):
         return datetime
 
-    def py_representation(self, field_value_obj : FieldValue):
-        try:
-            return datetime(field_value_obj.value).isoformat()
-        except TypeError:
-            return str(None)
+
     
         
 class FloatDataField(__DataField):

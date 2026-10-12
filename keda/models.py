@@ -105,10 +105,6 @@ class DataModel:
 
     @classmethod
     def update_objects(cls, **kwargs: dict):
-        values = []
-        new_values = {k: v for k,v in kwargs.items() if k.startswith("set")}
-        
-        
         pass
 
     def _set_fields_modified(self, modified_value: bool =False):
@@ -159,11 +155,11 @@ class DataModel:
         return db.execute(sql_statement, self._get_old_pk_values())
 
     @classmethod
-    def __row_to_object(cls, row: dict):
+    def _row_to_object(cls, row: dict):
         obj = cls(saved_to_db = True) #initialize object
         obj._set_fields_modified(False)
         for field in cls.MetaData.fields:
-            setattr(obj, field, row.get(field, None))
+            setattr(obj, field, cls.MetaData.class_attrs[field].py_representation_type(row.get(field, None)))
         return obj
 
 
@@ -171,7 +167,7 @@ class DataModel:
     def select_objects(cls, db):
         sql_statement = f"SELECT * FROM {cls.MetaData.table_name}"
         result = db.execute(sql_statement).fetchall()
-        result = [cls.__row_to_object(row) for row in result]
+        result = [cls._row_to_object(row) for row in result]
         return result
 
     def __str__(self):
