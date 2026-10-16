@@ -28,15 +28,27 @@ class Database():
     def execute(self, statement: str, params: tuple[str] = ()):
         start_time = time.time()
         try:
-            cursor = self.connection.cursor()
+            
             result = self.connection.execute(statement + ";", params)
+            rows = result.fetchall()
+            
+            self.connection.commit()
         except Exception as e:
             raise e
         end_time = time.time()
         output = f"Query finished in {end_time - start_time} seconds"
         
         print(f"{Text.cyan_text(output)}")
-        return result
+        return rows
+
+    def __enter__(self):
+        self._create_connection()
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.connection.rollback()
+        self.close()
+        print(f"{exc_type}: {exc}")
 
 
         

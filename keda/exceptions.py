@@ -9,3 +9,9 @@ class NoPrimaryKeyError(Exception):
 
 class InvalidFieldError(Exception):
     pass
+
+class MultipleObjectsReturned(Exception):
+    pass
+
+class DoesNotExist(Exception):
+    pass
