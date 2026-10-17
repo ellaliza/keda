@@ -65,7 +65,8 @@ converted raises `ValueError`.
 ### `DateDataField(**options)` and `DatetimeDataField(**options)`
 
 Date and date-time columns. SQLite has no date type, so both are stored as
-`TEXT`.
+`TEXT` in ISO format (`date.isoformat()` / `datetime.isoformat()`) and parsed
+back into `date` / `datetime` objects when a row is loaded.
 
 ## Validation
 
@@ -75,20 +76,22 @@ calls it whenever an instance is created or a field is assigned (see
 
 `None` is accepted only when the field has `null=True` (an `IntDataField` with
 `auto_increment` also accepts it). Otherwise the value's exact type must be one
-of `allowed_types`, or a `ValueError` is raised. Subclasses of these types, such
+of `allowed_types`, or a `ValueError` is raised (a `TypeError` for
+`FloatDataField`). Subclasses of these types, such
 as a `bool` given to an `IntDataField`, are rejected.
 
 | Field                | `allowed_types`                      | Further checks                                  |
 |----------------------|--------------------------------------|-------------------------------------------------|
 | `CharDataField`      | `str`                                | length at most `max_length`                     |
-| `IntDataField`       | `float`, `int`, `str`                | `min_value` / `max_value`                       |
-| `FloatDataField`     | `float`, `int`, `str`                | `min_value` / `max_value`                       |
+| `IntDataField`       | `float`, `int`, `str`                | value must convert to `int`; `min_value` / `max_value` |
+| `FloatDataField`     | `float`, `int`, `str`                | value must convert to `float`; `min_value` / `max_value` |
 | `BooleanDataField`   | `bool`, `int`, `float`               | none beyond the type                            |
 | `DateDataField`      | `date`, `datetime`, `str`, `int`, `float` | strings must be ISO dates, numbers must be valid timestamps |
 | `DatetimeDataField`  | `datetime`, `date`, `str`, `int`, `float` | strings must be ISO date-times, numbers must be valid timestamps |
 
-A value that breaks `max_length`, `min_value` or `max_value` raises
-`InvalidFieldValueError`. `default` is still not applied.
+The bounds are compared after converting the value, so a numeric string such as
+`"7"` works on a field with `max_value`. A value that breaks `max_length`,
+`min_value` or `max_value` raises `InvalidFieldValueError`. `default` is still not applied.
 
 ## Properties and methods
 
@@ -101,6 +104,12 @@ Every field provides:
   `name TEXT UNIQUE NOT NULL`. The primary key is declared separately by
   `migrate_model()`, not here.
 - `validate_value(value)`: see [Validation](#validation)
+- `get_db_representation(value)`: converts a Python value to what is written to
+  the database. `None` stays `None`; otherwise the value is converted with
+  `py_representation_type`, except that dates and date-times become ISO text.
+- `get_py_representation(value)`: converts a value read from the database to the
+  Python type. `DateDataField` and `DatetimeDataField` parse ISO text and keep
+  `None`; the other fields just call `py_representation_type(value)`.
 - `set_field_name(name)`: sets `field_name`. `DataModel` calls this for you
   with the attribute name, so you rarely need to call it yourself.
 
@@ -115,31 +124,19 @@ never share a value.
 | `value`              | The current value.                                               |
 | `old_value`          | The value as of the last save or load. Used to find the row when a primary key changes. |
 | `_modified`          | `True` when the value changed since the last save; decides which columns an update writes. |
-| `py_representation()`| Converts `value` with `py_representation_type`, returning `None` if that raises `TypeError`. This is what gets written to the database. |
+| `py_representation()`| Converts `value` with `py_representation_type`, returning `None` if that raises `TypeError`. No longer used when saving; the field's `get_db_representation()` does that. |
 
 `str(field_value)` is `str(field_value.value)`.
 
 ## Known limitations
 
 - `default` is not applied when a value is left out.
-- `py_representation()` is a plain type conversion. A `None` value becomes the
-  text `"None"` in a `CharDataField`, and `DateDataField` /
-  `DatetimeDataField` currently always convert to `None` because `date(...)`
-  and `datetime(...)` are called with a single value instead of being parsed.
-  A date column therefore always saves as `NULL`, which a `NOT NULL` column
-  rejects, so give date fields `null=True` until this is fixed.
-- Rows loaded by the manager are converted with `py_representation_type`
-  (for example `bool(1)` gives `True`). The same plain conversion applies:
-  `NULL` in an `INTEGER` or `REAL` column makes `int(None)` / `float(None)`
-  raise `TypeError`, `NULL` in a `TEXT` column becomes the string `"None"`, and
-  loading a date or datetime column raises `TypeError` because the stored text
-  is not parsed.
-- `BooleanDataField.validate_value` checks numbers and strings with date
-  functions, copied from `DateDataField`, so large integers or floats can be
-  rejected and some of its error messages mention dates.
-- The `max_value` / `min_value` checks compare the raw value, so a numeric
-  string given to an `IntDataField` or `FloatDataField` with a bound raises a
-  `TypeError`.
+- Loading goes through `get_py_representation()`, which is a plain type
+  conversion for everything except dates. A `NULL` in an `INTEGER` or `REAL`
+  column makes `int(None)` / `float(None)` raise `TypeError`, `NULL` in a
+  `TEXT` column becomes the string `"None"` (and `NULL` in a `BOOLEAN` column
+  becomes `False`). Saving is fine: `None` is written as `NULL`. Only date and
+  date-time columns load `NULL` correctly, as `None`.
 
 ## Examples
 
@@ -147,6 +144,7 @@ never share a value.
 CharDataField(max_length=200, unique=True)
 IntDataField(primary_key=True)
 IntDataField(min_value=0, max_value=150, null=True)
+DateDataField(null=True)
 BooleanDataField()
 FloatDataField(min_value=0)
 ```

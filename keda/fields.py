@@ -31,6 +31,16 @@ class __DataField(ABC):
     @abstractmethod
     def column_sql(self):
         pass
+
+    
+    def get_db_representation(self, value):
+        if value is None: 
+            return None
+        return self.py_representation_type(value)
+
+
+    def get_py_representation(self, value : str | None = None):
+        return self.py_representation_type(value)
         
 class FieldValue:
     def __init__(self, py_representation_type: type, value = None):
@@ -44,6 +54,7 @@ class FieldValue:
             return self.py_representation_type(self.value)
         except TypeError:
             return None
+
 
     def __str__(self):
         return str(self.value) 
@@ -90,6 +101,7 @@ class CharDataField(__DataField):
             raise InvalidFieldValueError(f"Value given must not exceed max_length of {self.max_length}. Value: {value} is {len(value)} chars")
                  
         return True
+
         
     
 class IntDataField(__DataField):
@@ -97,8 +109,8 @@ class IntDataField(__DataField):
     def __init__(self, max_value=None, min_value: int | None = None,  **kwargs):
         super().__init__(**kwargs)
         
-        self.max_value = max_value
-        self.min_value = min_value
+        self.max_value = int(max_value) if max_value is not None else None
+        self.min_value = int(min_value) if min_value is not None else None
         self._explicit_auto_inc = "auto_increment" in kwargs
         self.auto_increment: bool = kwargs.get("auto_increment", False)
 
@@ -125,9 +137,9 @@ class IntDataField(__DataField):
             int(value)
         except ValueError:
             raise ValueError(f"Value for `{self.field_name}` must a be float or compatible with float conversion")
-        if self.max_value is not None and value > self.max_value:
+        if self.max_value is not None and int(value) > self.max_value:
             raise InvalidFieldValueError(f"Value given must not exceed max_value of {self.max_value}. Value: {value}")
-        if self.min_value is not None and value < self.min_value:
+        if self.min_value is not None and int(value) < self.min_value:
             raise InvalidFieldValueError(f"Value given must not be below min_value of {self.min_value}. Value: {value}")
                     
         return True
@@ -139,8 +151,6 @@ class BooleanDataField(__DataField):
         super().__init__(**kwargs)
         self.primary_key = False
         
-
-
     @property
     def sql_datatype(self):
         return "BOOLEAN"
@@ -160,10 +170,9 @@ class BooleanDataField(__DataField):
             raise ValueError(f"Value for `{self.field_name}` must be of one of these types: {", ".join([str(t) for t in self.allowed_types])}. Value provided: {value} of type {str(type(value))}")
         try:
             if type(value) == int or type(value) == float:
-                date.fromtimestamp(value)
-            if type(value) == str:
-                date.fromisoformat(value)
-            if type(value) == bool:
+                bool(value)
+            
+            elif type(value) == bool:
                 pass
                 
         except ValueError:
@@ -216,7 +225,15 @@ class DateDataField(__DataField):
                     
         return True
 
-    
+    def get_db_representation(self, value : date | None = None):
+        if value is None: 
+            return None
+        return value.isoformat()
+
+    def get_py_representation(self, value : str | None = None):
+        if value is None:
+            return None
+        return date.fromisoformat(value)
         
 
 class DatetimeDataField(__DataField):
@@ -262,7 +279,15 @@ class DatetimeDataField(__DataField):
                     
         return True
 
-    
+    def get_db_representation(self, value : datetime | None = None):
+        if value is None: 
+            return None
+        return value.isoformat()    
+
+    def get_py_representation(self, value : str | None = None):
+        if value is None:
+            return None
+        return datetime.fromisoformat(value)
         
 class FloatDataField(__DataField):
     allowed_types = (float, int, str)
@@ -294,14 +319,14 @@ class FloatDataField(__DataField):
         if value is None and self.allow_null:
             return True
         if type(value) not in self.allowed_types:
-            raise ValueError(f"Value for `{self.field_name}` must be one of the following types: {", ".join([str(t) for t in self.allowed_types])}. Value provided: {value} of type {str(type(value))}")
+            raise TypeError(f"Value for `{self.field_name}` must be one of the following types: {", ".join([str(t) for t in self.allowed_types])}. Value provided: {value} of type {str(type(value))}")
         try:
             float(value)
         except ValueError:
             raise ValueError(f"Value for `{self.field_name}` must a be float or compatible with float conversion")
-        if self.max_value is not None and value > self.max_value:
+        if self.max_value is not None and float(value) > self.max_value:
             raise InvalidFieldValueError(f"Value given must not exceed max_value of {self.max_value}. Value: {value}")
-        if self.min_value is not None and value < self.min_value:
+        if self.min_value is not None and float(value) < self.min_value:
             raise InvalidFieldValueError(f"Value given must not be below min_value of {self.min_value}. Value: {value}")
                     
         return True

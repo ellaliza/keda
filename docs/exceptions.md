@@ -11,9 +11,10 @@ Defined in `keda/exceptions.py`. All of them inherit from Python's built-in
 | `InvalidFieldError`           | A name that is not a field of the model is used: assigning a non-field attribute on an instance, or using one in a `filter()` / `get()` lookup. |
 | `DoesNotExist`                | `manager.get()` matched no row. Available as `Model.DoesNotExist`, though it is the same class for every model. |
 | `MultipleObjectsReturned`     | `manager.get()` matched more than one row.                          |
+| `DeletedObjectError`          | A model instance that was deleted with `delete_object()` is saved, assigned to, or deleted again. |
 
 Field validation can also raise a plain `ValueError`, for example when a value
-has the wrong type or a required field is left out when creating an instance
+has the wrong type (a `TypeError` for a `FloatDataField`) or a required field is left out when creating an instance
 (see [Models](models.md#validation)).
 
 ```python

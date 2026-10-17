@@ -13,6 +13,11 @@ All notable changes to Keda are recorded here. The format follows
   `__gt`, `__gte`, `__lt`, `__lte` or `__contains`; several are combined with
   `AND`. Queries return a `ResultSet` that supports iteration and `len()`.
 - `DoesNotExist` and `MultipleObjectsReturned` exceptions, raised by `get()`.
+- `DeletedObjectError`: `delete_object()` now marks the instance as deleted, and
+  saving it, assigning to its fields or deleting it again raises this error.
+- `get_db_representation()` and `get_py_representation()` on every field.
+  Date and date-time fields are written as ISO text and parsed back into
+  `date` / `datetime` objects when loaded.
 - Field value validation: every field has `allowed_types` and
   `validate_value()`, which run when an instance is created or a field is
   assigned and enforce types, `max_length`, `max_value` and `min_value`.
@@ -56,7 +61,13 @@ All notable changes to Keda are recorded here. The format follows
 - Assigning a non-field attribute on a model instance raises
   `InvalidFieldError`; a value that fails validation raises
   `InvalidFieldValueError`.
-- Removed the debug `print` calls from saving and deleting.
+- `save_object()` on a saved object with no modified fields now does nothing
+  instead of failing, and `delete_object()` returns `None`.
+- `min_value` / `max_value` are converted to `int` / `float` and compared
+  against the converted value, so numeric strings work. `FloatDataField` raises
+  `TypeError` instead of `ValueError` for a value of the wrong type.
+- `BooleanDataField` validation no longer uses date functions.
+- `save_object()` prints the SQL statement and its parameters.
 
 ### Removed
 - `select_objects(db)`, replaced by `manager.all()` and `manager.filter()`.
@@ -66,10 +77,12 @@ All notable changes to Keda are recorded here. The format follows
 - Chainable result sets: filtering, ordering, limiting and indexing a
   `ResultSet`, and choosing columns. Planned for the next update, along with
   the start of relationships between models.
-- `default` is not applied, and date, datetime and `NULL` values are not
-  converted reliably when saving and loading.
-- Saving an unchanged saved object, or a changed object whose row was deleted,
-  raises an error.
+- `default` is not applied, and `NULL` is not loaded reliably from text,
+  integer, float and boolean columns.
+- After `save_object()` the instance holds the raw values SQLite returned (for
+  example `1` for a boolean, ISO text for a date) until it is loaded again.
+- Saving a changed object whose row was deleted through another instance raises
+  an `IndexError`.
 - `Database.__enter__` opens a second connection and leaves the first open.
 - Models cannot be pointed at a database file; they always use an in-memory
   database.

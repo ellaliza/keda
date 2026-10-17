@@ -115,8 +115,8 @@ and a value is required for them when creating an instance.
   for the next update.
 - **Relationships** between models (foreign keys and the like), also planned
   for the next update.
-- Applying a field's `default`, and reliable conversion of `NULL`, date and
-  datetime values to and from the database (see the limitations in
+- Applying a field's `default`, and loading `NULL` from text, integer, float
+  and boolean columns (see the limitations in
   [Fields](docs/fields.md#known-limitations)).
 - Choosing the database a model uses, schema changes to existing tables, and
   transactions beyond committing every statement.

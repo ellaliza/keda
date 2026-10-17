@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import dataclass_transform
-from exceptions import NoPrimaryKeyError, InvalidFieldValueError, DoesNotExist,InvalidFieldError, MultipleObjectsReturned
+from exceptions import NoPrimaryKeyError, InvalidFieldValueError, DoesNotExist,InvalidFieldError, MultipleObjectsReturned, DeletedObjectError
 from database_wrapper import Database
 from fields import FieldValue, __DataField, IntDataField
 from colored import Text
@@ -22,6 +22,7 @@ class DataModel:
     def __init__(self, **kwargs):
         self._saved_to_db = kwargs.get("saved_to_db", False)
         obj_attrs: dict[str, FieldValue] = {}
+        self._deleted = False
 
         initial_fields = {k: v for k, v in kwargs.items() if k in self._MetaData.fields}
         for field in self._MetaData.fields:
@@ -114,14 +115,17 @@ class DataModel:
                     
         else:
             fields_to_save = update_fields if update_fields is not None else [field for field in self._get_modified_fields()]
+
             column_section = [f"{col} = :{col}" for col in fields_to_save]
             sql_statement = f"UPDATE {self._MetaData.table_name} SET {", ".join(column_section)} WHERE {self.__get_pk_lookup()} RETURNING *"
         
-        values = {field : getattr(self._obj_attrs.get(field), "py_representation")() for field in fields_to_save}
+        values = {field : getattr(self._MetaData.class_attrs.get(field), "get_db_representation")(getattr(self._obj_attrs.get(field), "value")) for field in fields_to_save}
             
         if mode == "update":    
             values.update(self._get_old_pk_values())
-        
+
+        print(Text.yellow_text(sql_statement))
+        print(Text.yellow_text(values))
         result = db.execute(sql_statement, values)
         self._saved_to_db = True
         return result
@@ -136,7 +140,11 @@ class DataModel:
             setattr(self._obj_attrs[field], "_modified", modified_value)
 
     def save_object(self):
+        if self._deleted:
+            raise DeletedObjectError(f"Cannot save {self._MetaData.model_name}({self._MetaData.pk[0]}={self._obj_attrs.get(self._MetaData.pk[0]).value}) because it has been deleted.")
         if self._saved_to_db:
+            if not self._get_modified_fields():
+                return self
             result = self._save_object_to_db(db, mode="update")
             
         else:
@@ -158,6 +166,8 @@ class DataModel:
 
 
     def __setattr__(self, name: str, value):
+        if getattr(self, "_deleted", False):
+            raise DeletedObjectError(f"Cannot save {self._MetaData.model_name}({self._MetaData.pk[0]}={self._obj_attrs.get(self._MetaData.pk[0]).value})")
         if name.startswith("_"):
             return super().__setattr__(name, value)
         if name not in self._MetaData.fields:
@@ -181,13 +191,14 @@ class DataModel:
     def delete_object(self):
         sql_statement = f"DELETE FROM {self._MetaData.table_name} WHERE {self.__get_pk_lookup()}"
         
-        return db.execute(sql_statement, self._get_old_pk_values())
+        db.execute(sql_statement, self._get_old_pk_values())
+        self._deleted = True
 
     @classmethod
     def _row_to_object(cls, row: dict):
         fields = {}
         for field in cls._MetaData.fields:
-           fields.setdefault(field, cls._MetaData.class_attrs[field].py_representation_type(row.get(field, None)))
+           fields.setdefault(field, cls._MetaData.class_attrs[field].get_py_representation(row.get(field, None)))
         obj = cls(saved_to_db = True, **fields) #initialize object with fields
         obj._set_fields_modified(False)
         

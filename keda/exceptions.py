@@ -15,3 +15,6 @@ class MultipleObjectsReturned(Exception):
 
 class DoesNotExist(Exception):
     pass
+
+class DeletedObjectError(Exception):
+    pass

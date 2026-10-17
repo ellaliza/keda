@@ -72,8 +72,9 @@ example the type of the value, `max_length`, `max_value` and `min_value`; see
 
 - On assignment a failure is raised as `InvalidFieldValueError`.
 - On creation the error from the field is raised as it is, so you may see a
-  `ValueError` (wrong type, or a required field left out) or an
-  `InvalidFieldValueError` (a value that breaks a length or range limit).
+  `ValueError` (wrong type, or a required field left out; a `TypeError` for a
+  wrong type on a `FloatDataField`) or an `InvalidFieldValueError` (a value that
+  breaks a length or range limit).
 
 ## Primary keys
 
@@ -144,12 +145,21 @@ Writes the instance to the database and returns the instance.
   (`UPDATE ... RETURNING *`). Only the fields modified since the last save are
   written, and the row is found by its primary key (its previous value if you
   changed it).
+- Saving an object that is already saved and has no modified fields does
+  nothing and returns the instance.
 - The row SQLite returns is written back onto the instance, so values assigned
   by the database, such as a new `id`, are filled in. These are the raw values
   from SQLite, so for example a `BooleanDataField` reads `1` rather than `True`
-  until the row is loaded again.
+  and a date reads as its ISO text until the row is loaded again.
+- Values are converted for the database by the field's
+  [`get_db_representation()`](fields.md#properties-and-methods): `None` is
+  written as `NULL` and dates and date-times as ISO text.
+- Each save prints the SQL statement and its parameters in yellow.
 
 After saving, all fields are marked as unmodified.
+
+Saving an object that was deleted with `delete_object()` raises
+`DeletedObjectError`.
 
 ```python
 ana = Person(name="Ana")
@@ -160,18 +170,17 @@ ana.save_object()          # UPDATE person SET name = :name WHERE id = :old_id
 
 `RETURNING` needs SQLite 3.35 or newer.
 
-Current limitations:
-
-- Saving an already saved object with no modified fields fails with an
-  `OperationalError` (the `UPDATE` has an empty `SET` list).
-- Saving a changed object whose row no longer exists (for example after
-  `delete_object()`) fails with an `IndexError`, because the update returns no
-  row.
+Current limitation: saving a changed object whose row no longer exists (for
+example because it was deleted through another instance) fails with an
+`IndexError`, because the update returns no row.
 
 ## `delete_object()`
 
-Deletes the row matching the instance's primary key and returns the rows
-returned by the statement, which is always an empty list.
+Deletes the row matching the instance's primary key and returns `None`.
+
+The instance is then marked as deleted. You can still read its fields, but
+saving it, assigning to its fields or deleting it again raises
+`DeletedObjectError`.
 
 ## Querying
 
@@ -246,5 +255,5 @@ limiting or column selection yet.
 - Relationships between models, also planned.
 - Applying a field's `default` value.
 - Updating or deleting several rows at once.
-- Reliable handling of `NULL`, date and datetime values when saving and loading;
-  see the [known limitations](fields.md#known-limitations).
+- Loading `NULL` values from text, integer, float and boolean columns; see the
+  [known limitations](fields.md#known-limitations).
